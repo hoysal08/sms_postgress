@@ -1,5 +1,7 @@
 package com.example.SMS.service.impl;
 
+import com.example.SMS.CustomExceptions.StudentRegistrationException;
+import com.example.SMS.CustomExceptions.StudentWithdrawalException;
 import com.example.SMS.dto.StudentDTO;
 import com.example.SMS.entity.Course;
 import com.example.SMS.entity.Student;
@@ -50,42 +52,74 @@ public class StudentServiceImpl implements StudentService {
 
             studentRepository.save(ogStudent);
             return ogStudent;
+        } else {
+            throw new EntityNotFoundException("Student not found with ID: " + studentId);
         }
-        return null;
     }
 
     @Override
     public void deleteStudent(String studentId) {
-        studentRepository.deleteById(studentId);
+
+        try {
+            studentRepository.deleteById(studentId);
+        } catch (Exception e) {
+            throw new EntityNotFoundException("Student not found with ID: " + studentId);
+        }
+
     }
 
     @Override
     public List<Student> getAllStudents() {
         Iterable<Student> allStudents = studentRepository.findAll();
         return GlobalHelper.iterableToList(allStudents);
-
     }
 
     @Override
     public Boolean registerForCourse(String studentId, Long courseId) {
-        Student student = studentRepository.findById(studentId).orElseThrow(() -> new EntityNotFoundException("Student not found"));
+        Student student = studentRepository.findById(studentId)
+                .orElseThrow(() -> new EntityNotFoundException("Student not found with ID: " + studentId));
+
         Course course = courseService.getCourseById(courseId);
+
+        if (course == null) {
+            throw new EntityNotFoundException("Course not found with ID: " + courseId);
+        }
+
+        if (student.getCourses().contains(course)) {
+            throw new StudentRegistrationException("Student is already registered for the course.");
+        }
+
         Set<Course> coursesToRegister = new HashSet<>();
         coursesToRegister.add(course);
         student.getCourses().addAll(coursesToRegister);
         studentRepository.save(student);
-        return Boolean.TRUE;
+        return true;
     }
 
     @Override
     public Boolean withdrawForCourse(String studentId, Long courseId) {
-        Student student = studentRepository.findById(studentId).orElseThrow(() -> new EntityNotFoundException("Student not found"));
+        Student student = studentRepository.findById(studentId)
+                .orElseThrow(() -> new EntityNotFoundException("Student not found with ID: " + studentId));
+
         Course course = courseService.getCourseById(courseId);
-        List<Course> registredCourses = student.getCourses();
-        Boolean deleteSucess = registredCourses.remove(course);
-        studentRepository.save(student);
-        return deleteSucess;
+
+        if (course == null) {
+            throw new EntityNotFoundException("Course not found with ID: " + courseId);
+        }
+
+        if (!student.getCourses().contains(course)) {
+            throw new StudentWithdrawalException("Student is not registered for the course.");
+        }
+
+        boolean deleted = student.getCourses().remove(course);
+
+        if (deleted) {
+            studentRepository.save(student);
+        }
+
+        return deleted;
     }
+
 
     public long getTotalStudentCount() {
         return studentRepository.count();

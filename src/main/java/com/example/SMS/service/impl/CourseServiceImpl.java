@@ -34,34 +34,49 @@ public class CourseServiceImpl implements CourseService {
         Course course = new Course();
         Instructor courseInstructor = null;
         BeanUtils.copyProperties(courseDTO, course);
+
         if (courseDTO.getInstructorID() != null) {
             courseInstructor = instructorService.getInstructorById(courseDTO.getInstructorID());
+            if (courseInstructor == null) {
+                throw new EntityNotFoundException("Instructor not found with ID: " + courseDTO.getInstructorID());
+            }
             course.setInstructor(courseInstructor);
         }
+
         courseRepository.save(course);
         return course;
     }
 
+
     @Override
     public Course editCourse(CourseDTO courseDTO, Long courseId) {
-        Optional<Course> orginalCourse = courseRepository.findById(courseId);
-        if (orginalCourse.isPresent()) {
-            Course ogCourse = orginalCourse.get();
+        Optional<Course> originalCourse = courseRepository.findById(courseId);
+        if (originalCourse.isPresent()) {
+            Course ogCourse = originalCourse.get();
             BeanUtils.copyProperties(courseDTO, ogCourse);
-            Instructor courseInstructor = instructorService.getInstructorById(courseDTO.getInstructorID());
-            if (courseInstructor != null) {
+
+            if (courseDTO.getInstructorID() != null) {
+                Instructor courseInstructor = instructorService.getInstructorById(courseDTO.getInstructorID());
+                if (courseInstructor == null) {
+                    throw new EntityNotFoundException("Instructor not found with ID: " + courseDTO.getInstructorID());
+                }
                 ogCourse.setInstructor(courseInstructor);
-                ogCourse.setCourseId(courseId);
-                courseRepository.save(ogCourse);
-                return ogCourse;
             }
+
+            ogCourse.setCourseId(courseId);
+            return courseRepository.save(ogCourse);
+        } else {
+            throw new EntityNotFoundException("Course not found with ID: " + courseId);
         }
-        return null;
     }
 
     @Override
     public void deleteCourse(Long courseId) {
-        courseRepository.deleteById(courseId);
+        try {
+            courseRepository.deleteById(courseId);
+        } catch (Exception e) {
+            throw new EntityNotFoundException("Course not found with ID: " + courseId);
+        }
     }
 
     @Override
@@ -104,7 +119,8 @@ public class CourseServiceImpl implements CourseService {
 
     @Override
     public CourseStatus getStatus(Long courseId) {
-        Course course = courseRepository.findById(courseId).orElseThrow(() -> new EntityNotFoundException("Course not found"));
+        Course course = courseRepository.findById(courseId)
+                .orElseThrow(() -> new EntityNotFoundException("Course not found with ID: " + courseId));
         return course.getCourseStatus();
     }
 

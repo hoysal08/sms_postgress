@@ -1,22 +1,19 @@
 package com.example.SMS.service.impl;
 
+import com.example.SMS.CustomExceptions.EntityNotFoundException;
 import com.example.SMS.dto.InstructorDTO;
-import com.example.SMS.entity.Course;
 import com.example.SMS.entity.Instructor;
-import com.example.SMS.entity.Student;
 import com.example.SMS.helper.GlobalHelper;
 import com.example.SMS.repository.InstructorRepository;
-import com.example.SMS.service.CourseService;
 import com.example.SMS.service.InstructorService;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import javax.persistence.EntityNotFoundException;
-import java.util.HashSet;
+
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
+
 
 @Service
 public class InstructorServiceImpl implements InstructorService {
@@ -43,15 +40,19 @@ public class InstructorServiceImpl implements InstructorService {
             ogInstructor.setInstructorId(instructorId);
             ogInstructor.setInstructorDob(GlobalHelper.parseLocalDate(instructorDto.getInstructorDob(), "yyyy-MM-dd"));
 
-            instructorRepository.save(ogInstructor);
-            return ogInstructor;
+            return instructorRepository.save(ogInstructor);
+        } else {
+            throw new EntityNotFoundException("Instructor not found with ID: " + instructorId);
         }
-        return null;
     }
 
     @Override
     public void deleteInstructor(Long instructorId) {
-        instructorRepository.deleteById(instructorId);
+        try {
+            instructorRepository.deleteById(instructorId);
+        } catch (Exception e) {
+            throw new EntityNotFoundException("Instructor not found with ID: " + instructorId);
+        }
     }
 
     @Override
@@ -61,11 +62,8 @@ public class InstructorServiceImpl implements InstructorService {
     }
 
     public Instructor getInstructorById(Long instructorId) {
-        Optional<Instructor> instructor = instructorRepository.findById(instructorId);
-        if (instructor.isPresent()) {
-            return instructor.get();
-        }
-        return null;
+        return instructorRepository.findById(instructorId)
+                .orElseThrow(() -> new EntityNotFoundException("Instructor not found with ID: " + instructorId));
     }
 
     @Override

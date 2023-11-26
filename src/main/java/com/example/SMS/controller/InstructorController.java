@@ -1,12 +1,14 @@
 package com.example.SMS.controller;
 
+import com.example.SMS.CustomExceptions.EntityNotFoundException;
 import com.example.SMS.dto.InstructorDTO;
 import com.example.SMS.entity.Instructor;
 import com.example.SMS.helper.GlobalHelper;
 import com.example.SMS.service.InstructorService;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.jpa.repository.Query;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
@@ -20,41 +22,56 @@ public class InstructorController {
     private InstructorService instructorService;
 
     @PostMapping
-    InstructorDTO addInstructor(@RequestBody InstructorDTO instructorDto) {
-        Instructor addedInstructor = instructorService.addInstructor(instructorDto);
-        InstructorDTO instructorDto_return = new InstructorDTO();
-        BeanUtils.copyProperties(addedInstructor, instructorDto_return);
-        instructorDto_return.setInstructorDob(addedInstructor.getInstructorDob().toString());
-        return instructorDto_return;
+    public ResponseEntity<InstructorDTO> addInstructor(@RequestBody InstructorDTO instructorDto) {
+        try {
+            Instructor addedInstructor = instructorService.addInstructor(instructorDto);
+            InstructorDTO instructorDto_return = new InstructorDTO();
+            BeanUtils.copyProperties(addedInstructor, instructorDto_return);
+            instructorDto_return.setInstructorDob(addedInstructor.getInstructorDob().toString());
+            return ResponseEntity.status(HttpStatus.CREATED).body(instructorDto_return);
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
+        }
     }
 
     @PutMapping("/update/{instructorId}")
-    InstructorDTO updateInstructor(@RequestBody InstructorDTO instructorDto, @PathVariable Long instructorId) {
-        InstructorDTO updatedInstructorDto = new InstructorDTO();
-        Instructor updatedInstructor = instructorService.editInstructor(instructorDto, instructorId);
-        BeanUtils.copyProperties(updatedInstructor, updatedInstructorDto);
-        updatedInstructorDto.setInstructorDob(updatedInstructor.getInstructorDob().toString());
-        return updatedInstructorDto;
+    public ResponseEntity<InstructorDTO> updateInstructor(@RequestBody InstructorDTO instructorDto, @PathVariable Long instructorId) {
+        try {
+            InstructorDTO updatedInstructorDto = new InstructorDTO();
+            Instructor updatedInstructor = instructorService.editInstructor(instructorDto, instructorId);
+            BeanUtils.copyProperties(updatedInstructor, updatedInstructorDto);
+            updatedInstructorDto.setInstructorDob(updatedInstructor.getInstructorDob().toString());
+            return ResponseEntity.status(HttpStatus.OK).body(updatedInstructorDto);
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
+        } catch (EntityNotFoundException ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+        }
     }
 
     @GetMapping
-    List<InstructorDTO> getAllInstructors() {
+    public ResponseEntity<List<InstructorDTO>> getAllInstructors() {
         List<Instructor> allInstructorList = instructorService.getAllInstructors();
         List<InstructorDTO> allInstructorReturnList = new ArrayList<>();
         for (Instructor inst : allInstructorList) {
             allInstructorReturnList.add(GlobalHelper.instructorToInstructorDTO(inst));
         }
-        return allInstructorReturnList;
+        return ResponseEntity.status(HttpStatus.OK).body(allInstructorReturnList);
     }
 
     @DeleteMapping("/delete/{instructorId}")
-    void deleteInstructorById(@PathVariable Long instructorId) {
-        instructorService.deleteInstructor(instructorId);
+    public ResponseEntity<Void> deleteInstructorById(@PathVariable Long instructorId) {
+        try {
+            instructorService.deleteInstructor(instructorId);
+            return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+        } catch (EntityNotFoundException ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
     }
 
     @GetMapping("/getInstructioncourseCount")
-    List<Object[]> getInstructorsForCourses() {
-        return instructorService.getInstructorsForCourses();
+    public ResponseEntity<List<Object[]>> getInstructorsForCourses() {
+        List<Object[]> instructors = instructorService.getInstructorsForCourses();
+        return ResponseEntity.status(HttpStatus.OK).body(instructors);
     }
-
 }
